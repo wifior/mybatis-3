@@ -43,13 +43,35 @@ import org.xml.sax.SAXParseException;
 /**
  * @author Clinton Begin
  * @author Kazuki Shimizu
+ * 用于解析Mybatis 的 mybatis-config.xml 和 **Mapper.xml等xml 配置文件
  */
 public class XPathParser {
 
+  /**
+   * xml document 对象
+   */
   private final Document document;
+
+  /**
+   * 是否校验，一般情况下为true
+   */
   private boolean validation;
+
+  /**
+   * xml 实体解析器
+   * Mybatis自定义EntryResolver的实现，达到使用本地DTD文件
+   */
   private EntityResolver entityResolver;
+
+  /**
+   * 变量Properties对象
+   * 用于需要动态配置的属性值
+   */
   private Properties variables;
+
+  /**
+   * java xpath 对象
+   */
   private XPath xpath;
 
   public XPathParser(String xml) {
