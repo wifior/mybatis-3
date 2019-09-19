@@ -163,7 +163,9 @@ public class XPathParser {
   }
 
   public String evalString(Object root, String expression) {
+    //1.获得值
     String result = (String) evaluate(expression, root, XPathConstants.STRING);
+    //2.基于variables 替换动态值 ，如果result为动态值
     result = PropertyParser.parse(result, variables);
     return result;
   }
@@ -241,6 +243,13 @@ public class XPathParser {
     return new XNode(this, node, variables);
   }
 
+   /**
+    * 获得指定元素或节点的值
+    * @Param expression 表达式
+    * @Param root 指定节点
+    * @Param returnType 返回类型
+    * @return 值
+    **/
   private Object evaluate(String expression, Object root, QName returnType) {
     try {
       return xpath.evaluate(expression, root, returnType);
@@ -249,12 +258,19 @@ public class XPathParser {
     }
   }
 
+   /**
+    * 创建Document对象
+    *
+    * @param inputSource xml 的inputSource对象
+    * @return Document对象
+    **/
   private Document createDocument(InputSource inputSource) {
     // important: this must only be called AFTER common constructor
     try {
+      //1.创建DocumentBuilderFactory对象
       DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
       factory.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
-      factory.setValidating(validation);
+      factory.setValidating(validation);//设置是否验证xml
 
       factory.setNamespaceAware(false);
       factory.setIgnoringComments(true);
@@ -262,9 +278,10 @@ public class XPathParser {
       factory.setCoalescing(false);
       factory.setExpandEntityReferences(true);
 
+      //2.创建DocumentBuilder对象
       DocumentBuilder builder = factory.newDocumentBuilder();
-      builder.setEntityResolver(entityResolver);
-      builder.setErrorHandler(new ErrorHandler() {
+      builder.setEntityResolver(entityResolver);//设置实体解析器
+      builder.setErrorHandler(new ErrorHandler() {//实现都空的
         @Override
         public void error(SAXParseException exception) throws SAXException {
           throw exception;
@@ -280,6 +297,7 @@ public class XPathParser {
           // NOP
         }
       });
+      //3.解析xml文件
       return builder.parse(inputSource);
     } catch (Exception e) {
       throw new BuilderException("Error creating document instance.  Cause: " + e, e);
