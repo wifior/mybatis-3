@@ -1,5 +1,5 @@
 /**
- *    Copyright 2009-2016 the original author or authors.
+ *    Copyright 2009-2019 the original author or authors.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -46,19 +46,29 @@ public class PropertyParser {
   private static final String ENABLE_DEFAULT_VALUE = "false";
   private static final String DEFAULT_VALUE_SEPARATOR = ":";
 
+  /**
+   * private ,禁止构造ProertyParser对象，因为它是一个静态方法 的工具类。
+   */
   private PropertyParser() {
     // Prevent Instantiation
   }
 
   public static String parse(String string, Properties variables) {
+    //创建VariableTokenHandler对象
     VariableTokenHandler handler = new VariableTokenHandler(variables);
+    //创建GenericTokenParser对象
     GenericTokenParser parser = new GenericTokenParser("${", "}", handler);
+    //执行解析
     return parser.parse(string);
   }
 
+  //VariableTokenHandler
   private static class VariableTokenHandler implements TokenHandler {
+    //变量Properties对象
     private final Properties variables;
+    //是否开启默认值功能。默认为{@link #ENABLE_DEFAULT_VALUE}，即不开启
     private final boolean enableDefaultValue;
+    //默认值的分隔符，默认为{@link #KEY_DEFAULT_VALUE_SEPARATOR},即":"
     private final String defaultValueSeparator;
 
     private VariableTokenHandler(Properties variables) {
@@ -75,21 +85,26 @@ public class PropertyParser {
     public String handleToken(String content) {
       if (variables != null) {
         String key = content;
+        //开启默认值功能
         if (enableDefaultValue) {
+          //查找默认值
           final int separatorIndex = content.indexOf(defaultValueSeparator);
           String defaultValue = null;
           if (separatorIndex >= 0) {
             key = content.substring(0, separatorIndex);
             defaultValue = content.substring(separatorIndex + defaultValueSeparator.length());
           }
+          //有默认值，优先替换，不存 在则返回默认值
           if (defaultValue != null) {
             return variables.getProperty(key, defaultValue);
           }
         }
+        //未开启默认值功能，直接替换
         if (variables.containsKey(key)) {
           return variables.getProperty(key);
         }
       }
+      //无variables，直接返回
       return "${" + content + "}";
     }
   }

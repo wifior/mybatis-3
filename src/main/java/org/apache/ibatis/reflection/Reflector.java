@@ -49,23 +49,63 @@ import org.apache.ibatis.reflection.property.PropertyNamer;
  */
 public class Reflector {
 
+  /**
+   * 对应的类
+   */
   private final Class<?> type;
+  /**
+   * 可读属性数组
+   */
   private final String[] readablePropertyNames;
+  /**
+   * 可写属性集合
+   */
   private final String[] writablePropertyNames;
+  /**
+   * 属性对应的setting方法的映射
+   * key为属性名称
+   * value为invoker对象
+   */
   private final Map<String, Invoker> setMethods = new HashMap<>();
+  /**
+   * 属性对应的getting方法的映射
+   * key为属性名称
+   * value为invoker对象
+   */
   private final Map<String, Invoker> getMethods = new HashMap<>();
+  /**
+   * 属性对应的setting方法 的方法参数类型的映射(@link #setMethods)
+   * key 为属性名称
+   * value 为方法参数类型
+   */
   private final Map<String, Class<?>> setTypes = new HashMap<>();
+  /**
+   * 属性对应的getting方法 的方法参数类型的映射(@link #getMethods)
+   * key 为属性名称
+   * value 为返回值的类型
+   */
   private final Map<String, Class<?>> getTypes = new HashMap<>();
+  /**
+   * 默认构造方法
+   */
   private Constructor<?> defaultConstructor;
-
+  /**
+   * 不区分大小写的属性集合
+   */
   private Map<String, String> caseInsensitivePropertyMap = new HashMap<>();
 
   public Reflector(Class<?> clazz) {
+    //设置对应的类
     type = clazz;
+    //初始化defaultConstructor
     addDefaultConstructor(clazz);
+    //初始化getMethods和getTypes，通过遍历getting方法
     addGetMethods(clazz);
+    //初始化setMethods和setTypes，通过遍历setting方法
     addSetMethods(clazz);
+    //初始化getMethods和getTypes和setMethods+setTypes,通过遍历fields属性
     addFields(clazz);
+    //初始化readablePropertyNames、writeablePropertyNames、caseInsensitivePropertyMap属性
     readablePropertyNames = getMethods.keySet().toArray(new String[0]);
     writablePropertyNames = setMethods.keySet().toArray(new String[0]);
     for (String propName : readablePropertyNames) {
