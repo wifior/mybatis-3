@@ -117,40 +117,54 @@ public class Reflector {
   }
 
   private void addDefaultConstructor(Class<?> clazz) {
+    //获得所有构造方法
     Constructor<?>[] constructors = clazz.getDeclaredConstructors();
+    //遍历所有构造方法，查找无参的构造方法
     Arrays.stream(constructors).filter(constructor -> constructor.getParameterTypes().length == 0)
       .findAny().ifPresent(constructor -> this.defaultConstructor = constructor);
   }
 
   private void addGetMethods(Class<?> clazz) {
+    //属性与其getting方法的映射
     Map<String, List<Method>> conflictingGetters = new HashMap<>();
+    //获得所有方法
     Method[] methods = getClassMethods(clazz);
+    //遍历所有方法
     Arrays.stream(methods).filter(m -> m.getParameterTypes().length == 0 && PropertyNamer.isGetter(m.getName()))
       .forEach(m -> addMethodConflict(conflictingGetters, PropertyNamer.methodToProperty(m.getName()), m));
+    //解决getting冲突方法
     resolveGetterConflicts(conflictingGetters);
   }
 
   private void resolveGetterConflicts(Map<String, List<Method>> conflictingGetters) {
+    //遍历每个属性，查找其最匹配的方法，因为子类可以覆写父类的方法，所以一个属性，可能对应多个getting方法
     for (Entry<String, List<Method>> entry : conflictingGetters.entrySet()) {
-      Method winner = null;
+      Method winner = null;//最匹配的方法
       String propName = entry.getKey();
       boolean isAmbiguous = false;
       for (Method candidate : entry.getValue()) {
+        //winner为空，说明candidate为最匹配的方法
         if (winner == null) {
           winner = candidate;
           continue;
         }
+        //基于返回类型比较
         Class<?> winnerType = winner.getReturnType();
         Class<?> candidateType = candidate.getReturnType();
+        //类型相同
         if (candidateType.equals(winnerType)) {
+          //
           if (!boolean.class.equals(candidateType)) {
             isAmbiguous = true;
             break;
+            //选择boolean类型的is方法
           } else if (candidate.getName().startsWith("is")) {
             winner = candidate;
           }
+          //不符合选择子类
         } else if (candidateType.isAssignableFrom(winnerType)) {
           // OK getter type is descendant
+          //符合选择子类，因为子类可以修改放大返回值，
         } else if (winnerType.isAssignableFrom(candidateType)) {
           winner = candidate;
         } else {
@@ -158,6 +172,7 @@ public class Reflector {
           break;
         }
       }
+      //添加到getMethods和getTypes中
       addGetMethod(propName, winner, isAmbiguous);
     }
   }
@@ -174,10 +189,14 @@ public class Reflector {
   }
 
   private void addSetMethods(Class<?> clazz) {
+    //属性与其setting方法的映射
     Map<String, List<Method>> conflictingSetters = new HashMap<>();
+    //获得所有方法
     Method[] methods = getClassMethods(clazz);
+    //遍历所有方法
     Arrays.stream(methods).filter(m -> m.getParameterTypes().length == 1 && PropertyNamer.isSetter(m.getName()))
       .forEach(m -> addMethodConflict(conflictingSetters, PropertyNamer.methodToProperty(m.getName()), m));
+    //解决setting冲突方法
     resolveSetterConflicts(conflictingSetters);
   }
 
@@ -189,23 +208,28 @@ public class Reflector {
   }
 
   private void resolveSetterConflicts(Map<String, List<Method>> conflictingSetters) {
+    //遍历每个属性，查找其最匹配的方法，因为子类可以覆写父类的方法，所以一个属性，可能对应多个setting方法
     for (String propName : conflictingSetters.keySet()) {
       List<Method> setters = conflictingSetters.get(propName);
       Class<?> getterType = getTypes.get(propName);
       boolean isGetterAmbiguous = getMethods.get(propName) instanceof AmbiguousMethodInvoker;
       boolean isSetterAmbiguous = false;
       Method match = null;
+      //遍历属性对应的setting方法
       for (Method setter : setters) {
+        //和getterType相同，直接使用
         if (!isGetterAmbiguous && setter.getParameterTypes()[0].equals(getterType)) {
           // should be the best match
           match = setter;
           break;
         }
         if (!isSetterAmbiguous) {
+          //选择一个更加匹配的
           match = pickBetterSetter(match, setter, propName);
           isSetterAmbiguous = match == null;
         }
       }
+      //添加到setMethods和setTypes中
       if (match != null) {
         addSetMethod(propName, match);
       }
@@ -242,19 +266,23 @@ public class Reflector {
 
   private Class<?> typeToClass(Type src) {
     Class<?> result = null;
+    //普通类型，直接使用类
     if (src instanceof Class) {
       result = (Class<?>) src;
+      //泛型
     } else if (src instanceof ParameterizedType) {
       result = (Class<?>) ((ParameterizedType) src).getRawType();
     } else if (src instanceof GenericArrayType) {
+      //泛型 数组
       Type componentType = ((GenericArrayType) src).getGenericComponentType();
-      if (componentType instanceof Class) {
+      if (componentType instanceof Class) {//普通类型
         result = Array.newInstance((Class<?>) componentType, 0).getClass();
       } else {
-        Class<?> componentClass = typeToClass(componentType);
+        Class<?> componentClass = typeToClass(componentType);//递归该方法，返回类
         result = Array.newInstance(componentClass, 0).getClass();
       }
     }
+    //都不符合，使用Objects类
     if (result == null) {
       result = Object.class;
     }
@@ -262,8 +290,10 @@ public class Reflector {
   }
 
   private void addFields(Class<?> clazz) {
+    //获得所有field们
     Field[] fields = clazz.getDeclaredFields();
     for (Field field : fields) {
+      //设置field可访问
       if (!setMethods.containsKey(field.getName())) {
         // issue #379 - removed the check for final because JDK 1.5 allows
         // modification of final fields through reflection (JSR-133). (JGB)
@@ -277,12 +307,14 @@ public class Reflector {
         addGetField(field);
       }
     }
+    //递归，处理父类
     if (clazz.getSuperclass() != null) {
       addFields(clazz.getSuperclass());
     }
   }
 
   private void addSetField(Field field) {
+    //判断是合理的属性
     if (isValidPropertyName(field.getName())) {
       setMethods.put(field.getName(), new SetFieldInvoker(field));
       Type fieldType = TypeParameterResolver.resolveFieldType(field, type);
@@ -312,33 +344,38 @@ public class Reflector {
    * @return An array containing all methods in this class
    */
   private Method[] getClassMethods(Class<?> clazz) {
+    //用于记录指定类中定义的全部方法的唯一签名以及对应的method对象
     Map<String, Method> uniqueMethods = new HashMap<>();
     Class<?> currentClass = clazz;
     while (currentClass != null && currentClass != Object.class) {
+      //记录currentClass这个类中定义的全部方法
       addUniqueMethods(uniqueMethods, currentClass.getDeclaredMethods());
 
       // we also need to look for interface methods -
       // because the class may be abstract
+      //记录接口中定义的方法
       Class<?>[] interfaces = currentClass.getInterfaces();
       for (Class<?> anInterface : interfaces) {
         addUniqueMethods(uniqueMethods, anInterface.getMethods());
       }
 
-      currentClass = currentClass.getSuperclass();
+      currentClass = currentClass.getSuperclass();//获取父类，继续while循环
     }
 
     Collection<Method> methods = uniqueMethods.values();
-
+    //转换成Methods数据返回
     return methods.toArray(new Method[0]);
   }
 
   private void addUniqueMethods(Map<String, Method> uniqueMethods, Method[] methods) {
     for (Method currentMethod : methods) {
       if (!currentMethod.isBridge()) {
+        //通过Reflector.getSignature()方法得到的方法签名是:返回值类型#方法名称：参数类型列表
         String signature = getSignature(currentMethod);
         // check to see if the method is already known
         // if it is known, then an extended class must have
         // overridden a method
+        //检测是否在子类中已经添加过该方法，如果在子类中已经添加过，则表示子类覆盖了该方法，无须再向uniqueMethods集合中添加该方法了
         if (!uniqueMethods.containsKey(signature)) {
           uniqueMethods.put(signature, currentMethod);
         }
@@ -362,7 +399,7 @@ public class Reflector {
 
   /**
    * Checks whether can control member accessible.
-   *
+   * 判断，是否可以修改可访问 性
    * @return If can control member accessible, it return {@literal true}
    * @since 3.5.0
    */
