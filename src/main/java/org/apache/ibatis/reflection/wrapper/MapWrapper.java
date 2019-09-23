@@ -29,6 +29,7 @@ import org.apache.ibatis.reflection.property.PropertyTokenizer;
  */
 public class MapWrapper extends BaseWrapper {
 
+  //object变成了map
   private final Map<String, Object> map;
 
   public MapWrapper(MetaObject metaObject, Map<String, Object> map) {

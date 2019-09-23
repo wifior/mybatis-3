@@ -17,6 +17,8 @@ package org.apache.ibatis.exceptions;
 
 /**
  * @author Clinton Begin
+ * 实现Runtimeexception类，IBatis的异常基类
+ * 2015年废弃，取代它的是PersistenceException
  */
 @Deprecated
 public class IbatisException extends RuntimeException {

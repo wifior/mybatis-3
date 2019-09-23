@@ -35,12 +35,16 @@ public class TypeParameterResolver {
    *         they will be resolved to the actual runtime {@link Type}s.
    */
   public static Type resolveFieldType(Field field, Type srcType) {
+    //属性类型
     Type fieldType = field.getGenericType();
+    //定义的类
     Class<?> declaringClass = field.getDeclaringClass();
+    //解析类型
     return resolveType(fieldType, srcType, declaringClass);
   }
 
   /**
+   * 解析方法返回类型
    * @return The return type of the method as {@link Type}. If it has type parameters in the declaration,<br>
    *         they will be resolved to the actual runtime {@link Type}s.
    */
@@ -51,12 +55,16 @@ public class TypeParameterResolver {
   }
 
   /**
+   * 解析方法参数的类型数组
    * @return The parameter types of the method as an array of {@link Type}s. If they have type parameters in the declaration,<br>
    *         they will be resolved to the actual runtime {@link Type}s.
    */
   public static Type[] resolveParamTypes(Method method, Type srcType) {
+    //获得方法参数类型数组
     Type[] paramTypes = method.getGenericParameterTypes();
+    //定义的类
     Class<?> declaringClass = method.getDeclaringClass();
+    //解析类型
     Type[] result = new Type[paramTypes.length];
     for (int i = 0; i < paramTypes.length; i++) {
       result[i] = resolveType(paramTypes[i], srcType, declaringClass);
@@ -64,6 +72,13 @@ public class TypeParameterResolver {
     return result;
   }
 
+  /**
+   * 解析类型
+   * @param type
+   * @param srcType
+   * @param declaringClass
+   * @return
+   */
   private static Type resolveType(Type type, Type srcType, Class<?> declaringClass) {
     if (type instanceof TypeVariable) {
       return resolveTypeVar((TypeVariable<?>) type, srcType, declaringClass);
@@ -93,6 +108,13 @@ public class TypeParameterResolver {
     }
   }
 
+  /**
+   * 解析ParameterizedType类型
+   * @param parameterizedType
+   * @param srcType
+   * @param declaringClass
+   * @return
+   */
   private static ParameterizedType resolveParameterizedType(ParameterizedType parameterizedType, Type srcType, Class<?> declaringClass) {
     Class<?> rawType = (Class<?>) parameterizedType.getRawType();
     Type[] typeArgs = parameterizedType.getActualTypeArguments();
